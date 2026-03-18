@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dealership ROI Calculator — SDR Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111520;
+    --surface2: #161b28;
+    --border: rgba(255,255,255,0.07);
+    --accent: #e8420a;
+    --accent2: #f5a623;
+    --teal: #00d4aa;
+    --blue: #3b82f6;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --success: #10b981;
+    --tier1: #e8420a;
+    --tier2: #f5a623;
+    --tier3: #3b82f6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+    animation: fadeDown 0.5s ease;
+  }
+
+  .logo-mark {
+    width: 48px; height: 48px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 0 24px rgba(232,66,10,0.4);
+  }
+
+  .header-text h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: #fff;
+  }
+  .header-text p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(232,66,10,0.12);
+    border: 1px solid rgba(232,66,10,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+
+  /* AGENT CHAT */
+  .agent-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+
+  .agent-header {
+    background: linear-gradient(90deg, rgba(232,66,10,0.15) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .agent-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 8px var(--teal);
+    animation: pulse 2s infinite;
+  }
+
+  .agent-header span { font-size: 13px; font-weight: 600; color: var(--teal); letter-spacing: 0.5px; }
+  .agent-header .sub { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .chat-window {
+    padding: 20px;
+    min-height: 160px;
+    max-height: 340px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .chat-window::-webkit-scrollbar { width: 4px; }
+  .chat-window::-webkit-scrollbar-track { background: transparent; }
+  .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    animation: msgIn 0.3s ease;
+  }
+
+  .msg.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  .msg-avatar.agent { background: rgba(0,212,170,0.1); border-color: rgba(0,212,170,0.2); }
+  .msg-avatar.user-av { background: rgba(232,66,10,0.1); border-color: rgba(232,66,10,0.2); }
+
+  .msg-bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .msg.agent .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-top-left-radius: 4px;
+  }
+
+  .msg.user .msg-bubble {
+    background: rgba(232,66,10,0.12);
+    border: 1px solid rgba(232,66,10,0.2);
+    color: var(--text);
+    border-top-right-radius: 4px;
+  }
+
+  .msg-bubble strong { color: var(--accent2); }
+  .msg-bubble .highlight { color: var(--teal); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .msg-bubble .tier-badge {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; margin: 0 2px;
+  }
+  .tier-hot { background: rgba(232,66,10,0.2); color: var(--tier1); border: 1px solid rgba(232,66,10,0.3); }
+  .tier-warm { background: rgba(245,166,35,0.2); color: var(--tier2); border: 1px solid rgba(245,166,35,0.3); }
+  .tier-cold { background: rgba(59,130,246,0.2); color: var(--tier3); border: 1px solid rgba(59,130,246,0.3); }
+
+  /* Quick reply chips */
+  .quick-replies {
+    padding: 0 20px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,66,10,0.06);
+    transform: translateY(-1px);
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .chat-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .chat-input::placeholder { color: var(--muted); }
+  .chat-input:focus { border-color: rgba(232,66,10,0.4); }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    width: 42px; height: 42px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { background: #ff5520; transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* CALCULATOR PANEL */
+  .calc-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease 0.2s both;
+  }
+
+  .calc-header {
+    background: linear-gradient(90deg, rgba(59,130,246,0.1) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .calc-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    font-size: 18px;
+    color: #fff;
+  }
+
+  .calc-header .tag {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .calc-body { padding: 20px; }
+
+  /* Tier selector */
+  .tier-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .tier-card {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .tier-card:hover { transform: translateY(-2px); }
+  .tier-card.active-t1 { border-color: var(--tier1); background: rgba(232,66,10,0.06); }
+  .tier-card.active-t2 { border-color: var(--tier2); background: rgba(245,166,35,0.06); }
+  .tier-card.active-t3 { border-color: var(--tier3); background: rgba(59,130,246,0.06); }
+
+  .tier-card .tier-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    margin-bottom: 2px;
+  }
+
+  .tier-card.active-t1 .tier-name { color: var(--tier1); }
+  .tier-card.active-t2 .tier-name { color: var(--tier2); }
+  .tier-card.active-t3 .tier-name { color: var(--tier3); }
+
+  .tier-card .tier-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .tier-card .tier-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* Input grid */
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .input-field { display: flex; flex-direction: column; gap: 6px; }
+  .input-field.full { grid-column: 1/-1; }
+
+  label {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .input-wrap {
+    position: relative;
+    display: flex; align-items: center;
+  }
+
+  .input-prefix {
+    position: absolute; left: 12px;
+    font-size: 13px; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    pointer-events: none;
+  }
+
+  input[type="number"], input[type="range"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"].has-prefix { padding-left: 28px; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: rgba(232,66,10,0.5); }
+
+  /* Slider */
+  .slider-row { display: flex; flex-direction: column; gap: 6px; }
+  .slider-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .slider-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--surface2);
+    border: none;
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(232,66,10,0.5);
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  /* Known/Unknown toggle */
+  .known-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .toggle-opt {
+    flex: 1;
+    padding: 9px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    user-select: none;
+  }
+
+  .toggle-opt.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* Results */
+  .results-divider {
+    border: none;
+    border-top: 1px dashed rgba(255,255,255,0.08);
+    margin: 20px 0;
+  }
+
+  .results-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .results-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .metric-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 12px;
+    transition: border-color 0.3s;
+  }
+
+  .metric-card.highlight-card { border-color: rgba(0,212,170,0.2); }
+
+  .metric-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .metric-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    transition: all 0.4s;
+  }
+  .metric-val.green { color: var(--success); }
+  .metric-val.orange { color: var(--accent2); }
+  .metric-val.teal { color: var(--teal); }
+  .metric-sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Lost revenue banner */
+  .lost-rev-banner {
+    background: linear-gradient(135deg, #e8420a 0%, #c7320a 100%);
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 32px rgba(232,66,10,0.25);
+  }
+
+  .lost-rev-banner::before {
+    content: '';
+    position: absolute;
+    right: -30px; top: -30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+
+  .lost-rev-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.85);
+  }
+
+  .lost-rev-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    transition: all 0.5s;
+  }
+
+  /* Annual banner */
+  .annual-banner {
+    background: var(--surface2);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .annual-banner .label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; }
+  .annual-banner .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--teal);
+    transition: all 0.5s;
+  }
+
+  /* CTA */
+  .cta-row { display: flex; gap: 10px; }
+
+  .cta-btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+
+  .cta-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(232,66,10,0.3); }
+  .cta-primary:hover { background: #ff5520; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,66,10,0.4); }
+  .cta-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .cta-secondary:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* Breakdown table */
+  .breakdown {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .breakdown-row:last-child { border-bottom: none; }
+  .breakdown-row .op { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 13px; width: 20px; flex-shrink: 0; }
+  .breakdown-row .desc { flex: 1; color: var(--text); }
+  .breakdown-row .bval {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-align: right;
+  }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px);} to { opacity:1; transform:none; } }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:none; } }
+  @keyframes pulse { 0%,100%{ box-shadow: 0 0 8px var(--teal); } 50% { box-shadow: 0 0 16px var(--teal), 0 0 4px var(--teal); } }
+  @keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @keyframes numTick { from { opacity:0.5; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
+
+  .num-tick { animation: numTick 0.35s ease; }
+
+  .typing { display: flex; gap: 4px; padding: 4px 0; }
+  .typing span { width:6px;height:6px;border-radius:50%;background:var(--muted); animation: typingDot 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay:0.2s; }
+  .typing span:nth-child(3) { animation-delay:0.4s; }
+  @keyframes typingDot { 0%,80%{ opacity:0.3;transform:scale(0.8);} 40%{ opacity:1;transform:scale(1.1);} }
+
+  /* Known mode */
+  .known-mode { display: none; }
+  .known-mode.visible { display: flex; flex-direction: column; gap: 6px; }
+
+  /* Mobile */
+  @media(max-width: 600px) {
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .input-grid { grid-template-columns: 1fr; }
+    .tier-selector { grid-template-columns: 1fr 1fr 1fr; }
+    .lost-rev-val { font-size: 26px; }
+    .header-text h1 { font-size: 22px; }
+    .badge { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-mark">🚗</div>
+    <div class="header-text">
+      <h1>DEALERSHIP ROI CALCULATOR</h1>
+      <p>Used Car — AI-Powered Lost Revenue Agent</p>
+    </div>
+    <span class="badge">SDR Tool</span>
+  </div>
+
+  <!-- AI Agent Chat -->
+  <div class="agent-section">
+    <div class="agent-header">
+      <div class="agent-dot"></div>
+      <span>Revenue Intelligence Agent</span>
+      <span class="sub">Ask anything or use the calculator below</span>
+    </div>
+    <div class="chat-window" id="chatWindow">
+      <div class="msg agent">
+        <div class="msg-avatar agent">🤖</div>
+        <div class="msg-bubble">
+          Hey! I'm your dealership ROI agent. I'll help you calculate how much revenue this prospect is <strong>leaving on the table</strong> from missed calls.<br><br>
+          Quick question — does the prospect <strong>know their exact missed call rate</strong>, or should I estimate based on their dealership tier?
+        </div>
+      </div>
+    </div>
+    <div class="quick-replies" id="quickReplies">
+      <span class="chip" onclick="handleChip('they_know')">✅ They Know Their Rate</span>
+      <span class="chip" onclick="handleChip('estimate')">📊 Estimate by Tier</span>
+      <span class="chip" onclick="handleChip('what_is_tier')">❓ What's a Tier?</span>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text" placeholder="Type a question or number..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send-btn" id="sendBtn" onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+
+  <!-- Calculator Panel -->
+  <div class="calc-panel">
+    <div class="calc-header">
+      <span>📐</span>
+      <h2>ROI CALCULATION INPUTS</h2>
+      <span class="tag">Live Calculation</span>
+    </div>
+    <div class="calc-body">
+
+      <!-- Known/Unknown toggle -->
+      <div style="margin-bottom:6px;">
+        <label style="margin-bottom:8px;display:block;">MISSED CALL RATE MODE</label>
+        <div class="known-toggle">
+          <div class="toggle-opt active" id="toggleKnown" onclick="setMode('known')">📞 Prospect Told Me</div>
+          <div class="toggle-opt" id="toggleEstimate" onclick="setMode('estimate')">🎯 Estimate by Tier</div>
+        </div>
+      </div>
+
+      <!-- Known mode -->
+      <div class="known-mode visible" id="knownSection">
+        <div class="slider-row" style="margin-bottom:16px;">
+          <div class="slider-label-row">
+            <label>MISSED CALL RATE (KNOWN)</label>
+            <span class="slider-val" id="knownPctLabel">25%</span>
+          </div>
+          <input type="range" id="knownPct" min="5" max="60" value="25" oninput="knownPctUpdate()">
+        </div>
+      </div>
+
+      <!-- Tier selector -->
+      <div id="tierSection" style="display:none;">
+        <label style="margin-bottom:10px;display:block;">DEALERSHIP TIER — SELECT BASED ON PROSPECT</label>
+        <div class="tier-selector">
+          <div class="tier-card active-t1" id="tier1Card" onclick="selectTier(1)">
+            <div class="tier-name">HOT</div>
+            <div class="tier-pct" id="tier1Pct">35%</div>
+            <div class="tier-desc">High volume, under-staffed. Busy lot, overwhelmed team.</div>
+          </div>
+          <div class="tier-card" id="tier2Card" onclick="selectTier(2)">
+            <div class="tier-name">WARM</div>
+            <div class="tier-pct" id="tier2Pct">25%</div>
+            <div class="tier-desc">Mid-size. Some missed calls, inconsistent follow-up.</div>
+          </div>
+          <div class="tier-card" id="tier3Card" onclick="selectTier(3)">
+            <div class="tier-name">COLD</div>
+            <div class="tier-pct" id="tier3Pct">15%</div>
+            <div class="tier-desc">Smaller dealership, lower volume, better answered.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main inputs -->
+      <div class="input-grid">
+        <div class="input-field">
+          <label>Monthly Call Volume</label>
+          <div class="input-wrap">
+            <input type="number" id="callVolume" value="800" min="10" oninput="recalc()" placeholder="800">
+          </div>
+        </div>
+        <div class="input-field">
+          <label>Lead Conversion Rate (%)</label>
+          <div class="input-wrap">
+            <input type="number" id="convRate" value="8" min="1" max="50" step="0.5" oninput="recalc()" placeholder="8">
+          </div>
+        </div>
+        <div class="input-field">
+          <label>Avg Gross Profit / Deal ($)</label>
+          <div class="input-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="grossProfit" class="has-prefix" value="2500" min="100" oninput="recalc()" placeholder="2500">
+          </div>
+        </div>
+        <div class="input-field">
+          <label>Avg Deals / Month (optional)</label>
+          <div class="input-wrap">
+            <input type="number" id="currentDeals" value="40" min="1" oninput="recalc()" placeholder="40">
+          </div>
+        </div>
+      </div>
+
+      <hr class="results-divider">
+      <div class="results-label">Live Results</div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Missed Calls/Mo</div>
+          <div class="metric-val orange" id="rMissedCalls">200</div>
+          <div class="metric-sub">calls unanswered</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Lost Leads/Mo</div>
+          <div class="metric-val orange" id="rLostLeads">16</div>
+          <div class="metric-sub">potential buyers</div>
+        </div>
+        <div class="metric-card highlight-card">
+          <div class="metric-label">Recovery Potential</div>
+          <div class="metric-val teal" id="rRecovery">$40,000</div>
+          <div class="metric-sub">if 100% recovered</div>
+        </div>
+      </div>
+
+      <!-- Lost Revenue Banner -->
+      <div class="lost-rev-banner">
+        <div class="lost-rev-label">LOST REVENUE / MONTH</div>
+        <div class="lost-rev-val" id="rLostRev">$40,000</div>
+      </div>
+
+      <!-- Annual -->
+      <div class="annual-banner">
+        <div class="label">🗓️ ANNUALISED LOST REVENUE</div>
+        <div class="val" id="rAnnual">$480,000</div>
+      </div>
+
+      <!-- Breakdown -->
+      <div class="breakdown" id="breakdownTable">
+        <div class="breakdown-row">
+          <span class="op">📞</span>
+          <span class="desc">Monthly call volume</span>
+          <span class="bval" id="b1">800 calls</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="op">×</span>
+          <span class="desc">Missed call rate</span>
+          <span class="bval" id="b2">25%</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="op">=</span>
+          <span class="desc">Missed calls / month</span>
+          <span class="bval" id="b3">200 calls</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="op">×</span>
+          <span class="desc">Lead conversion rate</span>
+          <span class="bval" id="b4">8%</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="op">=</span>
+          <span class="desc">Potential lost deals</span>
+          <span class="bval" id="b5">16 deals</span>
+        </div>
+        <div class="breakdown-row">
+          <span class="op">×</span>
+          <span class="desc">Avg gross profit / deal</span>
+          <span class="bval" id="b6">$2,500</span>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-row" style="margin-top:16px;">
+        <button class="cta-btn cta-primary" onclick="generateSummary()">🚀 Generate Pitch Summary</button>
+        <button class="cta-btn cta-secondary" onclick="resetAll()">↺ Reset</button>
+      </div>
+
+      <!-- Pitch output -->
+      <div id="pitchOutput" style="display:none;margin-top:16px;"></div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// State
+let mode = 'known';
+let selectedTier = 1;
+const tierPcts = { 1: 35, 2: 25, 3: 15 };
+const tierLabels = { 1: 'HOT', 2: 'WARM', 3: 'COLD' };
+
+function setMode(m) {
+  mode = m;
+  if (m === 'known') {
+    document.getElementById('knownSection').style.display = '';
+    document.getElementById('tierSection').style.display = 'none';
+    document.getElementById('toggleKnown').classList.add('active');
+    document.getElementById('toggleEstimate').classList.remove('active');
+  } else {
+    document.getElementById('knownSection').style.display = 'none';
+    document.getElementById('tierSection').style.display = '';
+    document.getElementById('toggleKnown').classList.remove('active');
+    document.getElementById('toggleEstimate').classList.add('active');
+  }
+  recalc();
+}
+
+function knownPctUpdate() {
+  const v = document.getElementById('knownPct').value;
+  document.getElementById('knownPctLabel').textContent = v + '%';
+  recalc();
+}
+
+function selectTier(t) {
+  selectedTier = t;
+  [1,2,3].forEach(i => {
+    const c = document.getElementById('tier'+i+'Card');
+    c.className = 'tier-card';
+    if (i === t) c.className += ' active-t'+i;
+  });
+  recalc();
+  addMsg('agent', tierChatMsg(t));
+}
+
+function tierChatMsg(t) {
+  const msgs = {
+    1: `<span class="tier-badge tier-hot">HOT TIER</span> — I'm estimating <strong>35% missed call rate</strong>. This is a high-volume dealer, likely 5–15 staff, slammed on weekends. They're probably missing 1 in 3 calls. The pain is real and obvious.`,
+    2: `<span class="tier-badge tier-warm">WARM TIER</span> — Estimating <strong>25% missed call rate</strong>. Mid-size operation, decent staff but inconsistent. They feel the problem but haven't quantified it yet — perfect opening.`,
+    3: `<span class="tier-badge tier-cold">COLD TIER</span> — Estimating <strong>15% missed call rate</strong>. Smaller outfit, they answer most calls but still miss some. Lower urgency but the annual number still lands hard.`
+  };
+  return msgs[t];
+}
+
+function getMissedPct() {
+  if (mode === 'known') return parseFloat(document.getElementById('knownPct').value) / 100;
+  return tierPcts[selectedTier] / 100;
+}
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function recalc() {
+  const calls = parseFloat(document.getElementById('callVolume').value) || 0;
+  const conv = parseFloat(document.getElementById('convRate').value) / 100 || 0;
+  const gp = parseFloat(document.getElementById('grossProfit').value) || 0;
+  const missedPct = getMissedPct();
+
+  const missedCalls = Math.round(calls * missedPct);
+  const lostLeads = Math.round(missedCalls * conv);
+  const lostRev = lostLeads * gp;
+  const annual = lostRev * 12;
+
+  const tick = el => {
+    el.classList.remove('num-tick');
+    void el.offsetWidth;
+    el.classList.add('num-tick');
+  };
+
+  const els = ['rMissedCalls','rLostLeads','rRecovery','rLostRev','rAnnual'];
+  els.forEach(id => tick(document.getElementById(id)));
+
+  document.getElementById('rMissedCalls').textContent = missedCalls.toLocaleString();
+  document.getElementById('rLostLeads').textContent = lostLeads.toLocaleString();
+  document.getElementById('rRecovery').textContent = fmt(lostRev);
+  document.getElementById('rLostRev').textContent = fmt(lostRev);
+  document.getElementById('rAnnual').textContent = fmt(annual);
+
+  const pctStr = (missedPct * 100).toFixed(0) + '%';
+  document.getElementById('b1').textContent = calls.toLocaleString() + ' calls';
+  document.getElementById('b2').textContent = pctStr;
+  document.getElementById('b3').textContent = missedCalls.toLocaleString() + ' calls';
+  document.getElementById('b4').textContent = (conv*100).toFixed(1) + '%';
+  document.getElementById('b5').textContent = lostLeads + ' deals';
+  document.getElementById('b6').textContent = fmt(gp);
+}
+
+// Chat agent logic
+const SYSTEM_PROMPT = `You are a concise, data-driven ROI sales agent helping car dealership SDRs quantify lost revenue from missed calls. 
+Respond in 2-4 sentences max. Be sharp, use numbers, and help the SDR frame a strong pitch. 
+When giving numbers, be specific. Never be fluffy. Format numbers with $ and commas. Use bold for key numbers.`;
+
+async function callAgent(userMsg, context) {
+  const prompt = `Context: ${context}\n\nSDR question: ${userMsg}`;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || "Let me recalculate — try adjusting the inputs.";
+  } catch(e) {
+    return "Agent offline — use the calculator below directly.";
+  }
+}
+
+function getCalcContext() {
+  const calls = document.getElementById('callVolume').value;
+  const conv = document.getElementById('convRate').value;
+  const gp = document.getElementById('grossProfit').value;
+  const missedPct = (getMissedPct() * 100).toFixed(0);
+  const missed = Math.round(calls * getMissedPct());
+  const lost = Math.round(missed * conv / 100);
+  const rev = lost * parseFloat(gp);
+  const tier = mode === 'estimate' ? `Tier ${selectedTier} (${tierLabels[selectedTier]})` : 'Known rate';
+  return `Dealership: ${calls} monthly calls, ${missedPct}% missed (${tier}), ${conv}% conversion, $${gp} gross profit/deal. Missed calls: ${missed}, Lost leads: ${lost}, Lost revenue/month: $${Math.round(rev).toLocaleString()}, Annual: $${Math.round(rev*12).toLocaleString()}`;
+}
+
+function addMsg(who, html, isTyping=false) {
+  const w = document.getElementById('chatWindow');
+  const div = document.createElement('div');
+  div.className = `msg ${who === 'agent' ? 'agent' : 'user'}`;
+  const av = document.createElement('div');
+  av.className = `msg-avatar ${who === 'agent' ? 'agent' : 'user-av'}`;
+  av.textContent = who === 'agent' ? '🤖' : '👤';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (isTyping) {
+    bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    div.id = 'typingBubble';
+  } else {
+    bubble.innerHTML = html;
+  }
+  div.appendChild(av);
+  div.appendChild(bubble);
+  w.appendChild(div);
+  w.scrollTop = w.scrollHeight;
+  return div;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingBubble');
+  if (t) t.remove();
+}
+
+function clearChips() {
+  document.getElementById('quickReplies').innerHTML = '';
+}
+
+function setChips(chips) {
+  const el = document.getElementById('quickReplies');
+  el.innerHTML = '';
+  chips.forEach(([label, fn]) => {
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = label;
+    c.onclick = fn;
+    el.appendChild(c);
+  });
+}
+
+function handleChip(type) {
+  clearChips();
+  if (type === 'they_know') {
+    addMsg('user', "They know their exact rate.");
+    setMode('known');
+    setTimeout(() => {
+      addMsg('agent', `Got it! Slide the <strong>missed call rate slider</strong> to their exact number and fill in the call volume. I'll calculate the monthly loss instantly. <br><br>What's their call volume?`);
+      setChips([
+        ['Under 200/mo', () => { document.getElementById('callVolume').value=150; recalc(); addMsg('user','~150 calls/mo'); addMsg('agent','Small store. Even at 150 calls, the number will surprise them.'); clearChips(); }],
+        ['300–600/mo', () => { document.getElementById('callVolume').value=450; recalc(); addMsg('user','~450 calls/mo'); addMsg('agent','Solid mid-size volume. Run the calc and share the monthly number.'); clearChips(); }],
+        ['600–1000/mo', () => { document.getElementById('callVolume').value=800; recalc(); addMsg('user','~800 calls/mo'); addMsg('agent','High volume — this is where the pain gets serious. Show them the annual number.'); clearChips(); }],
+        ['1000+/mo', () => { document.getElementById('callVolume').value=1200; recalc(); addMsg('user','1,000+ calls/mo'); addMsg('agent','🔥 High traffic. The annual loss will be <em>very</em> large. Lead with that in your pitch.'); clearChips(); }],
+      ]);
+    }, 600);
+  } else if (type === 'estimate') {
+    addMsg('user', "They didn't share the rate — estimate for me.");
+    setMode('estimate');
+    setTimeout(() => {
+      addMsg('agent', `No problem. I'll estimate based on <strong>dealership tier</strong>. Pick the one that best fits this prospect 👇`);
+      setChips([
+        ['🔥 HOT Tier', () => selectTier(1)],
+        ['🌡️ WARM Tier', () => selectTier(2)],
+        ['❄️ COLD Tier', () => selectTier(3)],
+      ]);
+    }, 600);
+  } else if (type === 'what_is_tier') {
+    addMsg('user', "What's a dealership tier?");
+    setTimeout(() => {
+      addMsg('agent', `Great question! Tiers are my built-in assumptions for used car dealers:<br>
+        <span class="tier-badge tier-hot">HOT</span> Large busy lot, 500+ cars, weekends slammed → <strong>~35% missed</strong><br>
+        <span class="tier-badge tier-warm">WARM</span> Mid-size, 150–499 cars, inconsistent coverage → <strong>~25% missed</strong><br>
+        <span class="tier-badge tier-cold">COLD</span> Smaller indie dealer, under 150 cars → <strong>~15% missed</strong><br><br>
+        Does the prospect know their actual rate?`);
+      setChips([
+        ['✅ They Know', () => handleChip('they_know')],
+        ['📊 Use Tier', () => handleChip('estimate')],
+      ]);
+    }, 600);
+  }
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  addMsg('user', msg);
+  const typingEl = addMsg('agent', '', true);
+  const context = getCalcContext();
+  const reply = await callAgent(msg, context);
+  removeTyping();
+  addMsg('agent', reply);
+}
+
+function generateSummary() {
+  const calls = document.getElementById('callVolume').value;
+  const conv = document.getElementById('convRate').value;
+  const gp = document.getElementById('grossProfit').value;
+  const missedPct = (getMissedPct() * 100).toFixed(0);
+  const missed = Math.round(calls * getMissedPct());
+  const lost = Math.round(missed * conv / 100);
+  const rev = lost * parseFloat(gp);
+  const annual = rev * 12;
+  const tierStr = mode === 'estimate' ? `Tier ${selectedTier} (${tierLabels[selectedTier]}) estimate` : 'prospect-confirmed rate';
+
+  const out = document.getElementById('pitchOutput');
+  out.style.display = '';
+  out.innerHTML = `
+    <div style="background:var(--surface2);border:1px solid rgba(0,212,170,0.2);border-radius:12px;padding:18px 20px;">
+      <div style="font-size:11px;letter-spacing:2px;font-weight:700;color:var(--teal);text-transform:uppercase;margin-bottom:12px;">📋 SDR PITCH SUMMARY</div>
+      <p style="font-size:14px;line-height:1.7;color:var(--text);">
+        "Based on your <strong style='color:var(--accent2)'>${calls} monthly calls</strong> and a <strong style='color:var(--accent2)'>${missedPct}% missed call rate</strong> (${tierStr}), 
+        your team is missing roughly <strong style='color:var(--accent2)'>${missed} calls</strong> a month. 
+        At an ${conv}% conversion rate, that's <strong style='color:var(--accent2)'>${lost} lost deals</strong> — 
+        and at $${parseFloat(gp).toLocaleString()} gross per deal, 
+        you're walking away from <strong style='color:#e8420a;font-size:16px;'>${fmt(rev)}/month</strong> — 
+        or <strong style='color:var(--teal);font-size:16px;'>${fmt(annual)}/year</strong>."
+      </p>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
+        💡 Ask: <em>"If we could recover even 40% of those missed calls, that's ${fmt(rev*0.4)}/month in recaptured revenue. What would that mean for your store?"</em>
+      </div>
+    </div>`;
+
+  addMsg('agent', `Pitch generated! 🎯 Use this as your opener. The <strong>${fmt(annual)} annual number</strong> is your anchor — always lead with the annual figure, then bring it down to monthly to make it digestible.`);
+}
+
+function resetAll() {
+  document.getElementById('callVolume').value = 800;
+  document.getElementById('convRate').value = 8;
+  document.getElementById('grossProfit').value = 2500;
+  document.getElementById('currentDeals').value = 40;
+  document.getElementById('knownPct').value = 25;
+  document.getElementById('knownPctLabel').textContent = '25%';
+  setMode('known');
+  recalc();
+  document.getElementById('pitchOutput').style.display = 'none';
+}
+
+// Init
+recalc();
+</script>
+</body>
+</html>
